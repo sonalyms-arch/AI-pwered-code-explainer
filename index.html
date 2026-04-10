@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PyExplain — AI Python Code Explainer for AIML Students</title>
+  <meta name="description"
+    content="Paste Python code and get AI-powered line-by-line explanations, flow diagrams, and a live chat tutor — built for AIML students." />
+
+  <!-- CodeMirror CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/selection/active-line.min.js"></script>
+
+  <style>
+    /* ─────────────── CSS VARIABLES / THEMING ─────────────── */
+    :root {
+      --purple: #534AB7;
+      --purple-light: #7B74D4;
+      --purple-xlight: #EBE9FF;
+      --teal: #1D9E75;
+      --teal-light: #D1F5EA;
+      --bg: #F4F4F8;
+      --surface: #FFFFFF;
+      --surface2: #F0EFF7;
+      --border: rgba(0, 0, 0, 0.09);
+      --text: #1A1A2E;
+      --text-muted: #6B6B8A;
+      --navbar-bg: #FFFFFF;
+      --shadow: 0 2px 16px rgba(83, 74, 183, 0.10);
+      --radius: 12px;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --mono: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --transition: 0.2s ease;
+    }
+
+    [data-theme="dark"] {
+      --bg: #12111E;
+      --surface: #1E1C30;
+      --surface2: #252340;
+      --border: rgba(255, 255, 255, 0.07);
+      --text: #E8E6FF;
+      --text-muted: #8D8AAA;
+      --navbar-bg: #1A1831;
+      --shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
+      --purple-xlight: #2E2A5A;
+      --teal-light: #0F3A2C;
+    }
+
+    /* ─────────────── RESET & BASE ─────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      font-family: var(--font);
+    }
+
+    input,
+    textarea {
+      font-family: var(--font);
+    }
+
+    /* ─────────────── NAVBAR ─────────────── */
+    #navbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 24px;
+      height: 58px;
+      background: var(--navbar-bg);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    #navbar .logo {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--purple);
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #navbar .logo svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .badge {
+      background: var(--purple-xlight);
+      color: var(--purple);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    #navbar .spacer {
+      flex: 1;
+    }
+
+    #dark-toggle {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      transition: var(--transition);
+    }
+
+    #dark-toggle:hover {
+      background: var(--purple-xlight);
+      color: var(--purple);
+    }
+
+    #explain-btn {
+      background: var(--purple);
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 700;
+      padding: 9px 22px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background var(--transition), transform 0.1s;
+      box-shadow: 0 3px 12px rgba(83, 74, 183, 0.3);
+      letter-spacing: 0.2px;
+    }
+
+    #explain-btn:hover {
+      background: var(--purple-light);
+      transform: translateY(-1px);
+    }
+
+    #explain-btn:active {
+      transform: translateY(0);
+    }
+
+    #explain-btn.loading {
+      background: #8880CC;
+      pointer-events: none;
+    }
+
+    #explain-btn.success {
+      background: var(--teal);
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2.5px solid rgba(255, 255, 255, 0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    #explain-btn.loading .spinner {
+      display: block;
+    }
+
+    #explain-btn.loading .btn-text::before {
+      content: 'Explaining…';
+    }
+
+    #explain-btn.success .btn-text::before {
+      content: '✓ Explained!';
+    }
+
+    #explain-btn:not(.loading):not(.success) .btn-text::before {
+      content: 'Explain Code';
+    }
+
+    .btn-text::before {}
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ─────────────── MAIN LAYOUT ─────────────── */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ─────────────── LEFT PANEL — EDITOR ─────────────── */
+    #left-panel {
+      width: 48%;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .panel-header {
+      padding: 12px 16px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .panel-header .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--purple);
+    }
+
+    #editor-wrap {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* CodeMirror overrides */
+    .CodeMirror {
+      height: 100% !important;
+      font-family: var(--mono) !important;
+      font-size: 13.5px !important;
+      line-height: 1.7 !important;
+    }
+
+    [data-theme="dark"] .CodeMirror {
+      background: #1A1831 !important;
+      color: #C8C5FF !important;
+    }
+
+    [data-theme="dark"] .CodeMirror-gutters {
+      background: #1A1831 !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+    }
+
+    [data-theme="dark"] .CodeMirror-linenumber {
+      color: #5A567A !important;
+    }
+
+    .CodeMirror-activeline-background {
+      background: rgba(83, 74, 183, 0.08) !important;
+    }
+
+    .cm-highlighted-line {
+      background: rgba(83, 74, 183, 0.18) !important;
+    }
+
+    /* ─────────────── RIGHT PANEL — OUTPUT ─────────────── */
+    #right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    /* TABS */
+    #tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      padding: 14px 20px;
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border-bottom: 2.5px solid transparent;
+      transition: color var(--transition), border-color var(--transition);
+      letter-spacing: 0.3px;
+    }
+
+    .tab-btn:hover {
+      color: var(--purple);
+    }
+
+    .tab-btn.active {
+      color: var(--purple);
+      border-bottom-color: var(--purple);
+    }
+
+    /* TAB PANES */
+    .tab-pane {
+      display: none;
+      flex: 1;
+      overflow: hidden;
+      flex-direction: column;
+    }
+
+    .tab-pane.active {
+      display: flex;
+    }
+
+    /* ─────────── TAB 1 — EXPLANATION ─────────── */
+    #explanation-pane {
+      overflow-y: auto;
+      padding: 20px 20px 32px;
+      gap: 0;
+    }
+
+    /* Skeleton loader */
+    .skeleton-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .skeleton-badge {
+      width: 32px;
+      height: 22px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      flex-shrink: 0;
+    }
+
+    .skeleton-text {
+      flex: 1;
+      height: 14px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      margin-top: 4px;
+    }
+
+    .skeleton-text.short {
+      max-width: 55%;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* Explanation rows */
+    #explanation-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .expl-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 11px 8px;
+      border-bottom: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .expl-row:hover {
+      background: var(--surface2);
+    }
+
+    .expl-row.highlighted {
+      background: var(--purple-xlight);
+    }
+
+    .line-badge {
+      min-width: 32px;
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: var(--purple);
+      color: #fff;
+      flex-shrink: 0;
+      margin-top: 1px;
+      font-family: var(--mono);
+    }
+
+    .expl-text {
+      font-size: 0.87rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .expl-code-inline {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      background: var(--surface2);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--purple);
+    }
+
+    /* Improvements banner */
+    #improvements-banner {
+      margin-top: 20px;
+      padding: 16px 18px;
+      border-radius: var(--radius);
+      background: var(--teal-light);
+      border: 1px solid var(--teal);
+      display: none;
+    }
+
+    #improvements-banner h3 {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--teal);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #improvements-banner ul {
+      padding-left: 18px;
+      font-size: 0.85rem;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    #improvements-banner ul li+li {
+      margin-top: 6px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 14px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 40px;
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      font-size: 0.88rem;
+      max-width: 260px;
+      line-height: 1.6;
+    }
+
+    /* Error message */
+    .error-msg {
+      margin: 20px;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      background: #FFF0F0;
+      border: 1px solid #FFCACA;
+      color: #C0392B;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    [data-theme="dark"] .error-msg {
+      background: #2A1A1A;
+      border-color: #6B2A2A;
+      color: #F08080;
+    }
+
+    /* ─────────── TAB 2 — FLOW DIAGRAM ─────────── */
+    #flow-pane {
+      overflow-y: auto;
+      padding: 24px 32px 40px;
+      align-items: center;
+    }
+
+    #flow-chart {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .flow-node {
+      padding: 11px 22px;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.4;
+      max-width: 320px;
+      width: 100%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+      position: relative;
+    }
+
+    .flow-node.start,
+    .flow-node.output {
+      background: var(--teal);
+      color: #fff;
+      border-radius: 30px;
+    }
+
+    .flow-node.process {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .flow-node.decision {
+      background: var(--purple);
+      color: #fff;
+      transform: rotate(0);
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+      padding: 28px 40px;
+      border-radius: 0;
+      font-size: 0.78rem;
+    }
+
+    .flow-node.loop {
+      background: var(--purple-xlight);
+      color: var(--purple);
+      border: 2px solid var(--purple);
+      border-radius: 6px;
+    }
+
+    .flow-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      line-height: 1;
+      padding: 3px 0;
+    }
+
+    .flow-arrow::before {
+      content: '';
+      display: block;
+      width: 2px;
+      height: 22px;
+      background: var(--border);
+    }
+
+    .flow-arrow::after {
+      content: '▼';
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: -4px;
+    }
+
+    /* ─────────── TAB 3 — CHAT ─────────── */
+    #chat-pane {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .msg {
+      max-width: 82%;
+      padding: 11px 15px;
+      border-radius: 14px;
+      font-size: 0.87rem;
+      line-height: 1.6;
+      animation: fadeUp 0.25s ease;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--purple);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.assistant {
+      align-self: flex-start;
+      background: var(--surface2);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .msg.assistant code {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      background: var(--border);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* Typing indicator */
+    .typing-dots {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 14px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+      animation: fadeUp 0.25s ease;
+    }
+
+    .typing-dots span {
+      width: 7px;
+      height: 7px;
+      background: var(--purple-light);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-dots span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-dots span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: translateY(0);
+        opacity: 0.5;
+      }
+
+      40% {
+        transform: translateY(-6px);
+        opacity: 1;
+      }
+    }
+
+    /* Chat input area */
+    #chat-input-area {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    #chat-input {
+      flex: 1;
+      resize: none;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.87rem;
+      background: var(--surface2);
+      color: var(--text);
+      outline: none;
+      max-height: 120px;
+      line-height: 1.55;
+      transition: border-color var(--transition);
+    }
+
+    #chat-input:focus {
+      border-color: var(--purple);
+    }
+
+    #chat-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    #chat-send-btn {
+      background: var(--purple);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background var(--transition), transform 0.1s;
+      box-shadow: 0 2px 8px rgba(83, 74, 183, 0.25);
+    }
+
+    #chat-send-btn:hover {
+      background: var(--purple-light);
+      transform: translateY(-1px);
+    }
+
+    #chat-send-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Chat empty state */
+    #chat-intro {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 30px;
+    }
+
+    #chat-intro .empty-icon {
+      font-size: 2.5rem;
+    }
+
+    #chat-intro p {
+      font-size: 0.85rem;
+      max-width: 240px;
+      line-height: 1.6;
+    }
+
+    /* ─────────── SCROLLBAR ─────────── */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 6px;
+    }
+
+    /* ─────────── API KEY BUTTON ─────────── */
+    #api-key-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 13px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+      letter-spacing: 0.2px;
+    }
+
+    #api-key-btn:hover {
+      background: var(--purple-xlight);
+      color: var(--purple);
+      border-color: var(--purple);
+    }
+
+    #api-key-btn.key-set {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: var(--teal-light);
+    }
+
+    #api-key-btn .key-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      transition: background var(--transition);
+    }
+
+    /* ─────────── MODAL OVERLAY ─────────── */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      animation: fadein 0.2s ease;
+    }
+
+    #modal-overlay.open {
+      display: flex;
+    }
+
+    @keyframes fadein {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    #api-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 36px 36px 28px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+      animation: slideUp 0.25s cubic-bezier(.34, 1.56, .64, 1);
+      position: relative;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(24px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    #api-modal .modal-icon {
+      width: 52px;
+      height: 52px;
+      background: var(--purple-xlight);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin-bottom: 18px;
+    }
+
+    #api-modal h2 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    #api-modal p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    #api-modal p a {
+      color: var(--purple);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    #api-modal p a:hover {
+      text-decoration: underline;
+    }
+
+    #modal-key-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    #modal-key-input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-family: var(--mono);
+      background: var(--surface2);
+      color: var(--text);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      margin-bottom: 6px;
+    }
+
+    #modal-key-input:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(83, 74, 183, 0.15);
+    }
+
+    #modal-key-input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    #modal-key-hint {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    #modal-cancel-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 0.87rem;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    #modal-cancel-btn:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    #modal-save-btn {
+      background: var(--purple);
+      color: #fff;
+      border-radius: 8px;
+      padding: 9px 22px;
+      font-size: 0.87rem;
+      font-weight: 700;
+      transition: background var(--transition), transform 0.1s;
+      box-shadow: 0 3px 12px rgba(83, 74, 183, 0.3);
+    }
+
+    #modal-save-btn:hover {
+      background: var(--purple-light);
+      transform: translateY(-1px);
+    }
+
+    #modal-save-btn:active {
+      transform: translateY(0);
+    }
+
+    #modal-close-x {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      background: transparent;
+      border: none;
+      font-size: 1.3rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: background var(--transition);
+    }
+
+    #modal-close-x:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    #modal-status {
+      font-size: 0.8rem;
+      margin-top: 10px;
+      min-height: 18px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    #modal-status.ok {
+      color: var(--teal);
+    }
+
+    #modal-status.err {
+      color: #E74C3C;
+    }
+
+    /* ─────────── RESPONSIVE ─────────── */
+    @media (max-width: 768px) {
+      #main {
+        flex-direction: column;
+      }
+
+      #left-panel {
+        width: 100%;
+        height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #api-modal {
+        margin: 16px;
+        padding: 28px 22px 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══════════════ NAVBAR ══════════════ -->
+  <nav id="navbar">
+    <div class="logo">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="#534AB7" />
+        <path
+          d="M8 12C8 10.343 9.343 9 11 9H16C19.314 9 22 11.686 22 15C22 18.314 19.314 21 16 21H13V24H11C9.343 24 8 22.657 8 21V12Z"
+          fill="white" opacity="0.9" />
+        <circle cx="23" cy="23" r="5" fill="#1D9E75" />
+        <path d="M21 23L22.5 24.5L25.5 21.5" stroke="white" stroke-width="1.5" stroke-linecap="round"
+          stroke-linejoin="round" />
+      </svg>
+      PyExplain
+    </div>
+    <span class="badge">All Python — AIML Ready</span>
+    <div class="spacer"></div>
+    <button id="ai-status-btn" title="Powered by Pollinations AI — free, no key needed" aria-label="AI Status"
+      style="background:var(--teal-light);border:1.5px solid var(--teal);border-radius:8px;padding:6px 13px;color:var(--teal);font-size:0.8rem;font-weight:700;display:flex;align-items:center;gap:6px;cursor:default;letter-spacing:0.2px;">
+      <span style="width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;"></span> Free AI
+      ✓
+    </button>
+    <button id="dark-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+    <button id="explain-btn" aria-label="Explain code">
+      <div class="spinner"></div>
+      <span class="btn-text"></span>
+    </button>
+  </nav>
+
+  <!-- ══════════════ MAIN ══════════════ -->
+  <div id="main">
+
+    <!-- LEFT: CODE EDITOR -->
+    <div id="left-panel">
+      <div class="panel-header">
+        <span class="dot"></span>
+        Python Editor
+      </div>
+      <div id="editor-wrap">
+        <textarea id="code-editor">import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+# Generate sample data
+X = np.random.rand(100, 1) * 10
+y = 2.5 * X + np.random.randn(100, 1) * 2
+
+# Train the model
+model = LinearRegression()
+model.fit(X, y)
+
+# Make predictions
+X_test = np.linspace(0, 10, 300).reshape(-1, 1)
+y_pred = model.predict(X_test)
+
+# Plot results
+plt.figure(figsize=(8, 5))
+plt.scatter(X, y, alpha=0.5, label='Data points')
+plt.plot(X_test, y_pred, color='red', label='Regression line')
+plt.xlabel('X')
+plt.ylabel('y')
+plt.title('Linear Regression')
+plt.legend()
+plt.show()
+
+print(f"Coefficient: {model.coef_[0][0]:.4f}")
+print(f"Intercept: {model.intercept_[0]:.4f}")
+</textarea>
+      </div>
+    </div>
+
+    <!-- RIGHT: OUTPUT TABS -->
+    <div id="right-panel">
+      <div id="tabs">
+        <button class="tab-btn active" data-tab="explanation">📄 Explanation</button>
+        <button class="tab-btn" data-tab="flow">🔀 Flow Diagram</button>
+        <button class="tab-btn" data-tab="chat">💬 Chat</button>
+      </div>
+
+      <!-- TAB 1: EXPLANATION -->
+      <div class="tab-pane active" id="explanation-pane">
+        <div class="empty-state" id="expl-empty">
+          <div class="empty-icon">🔍</div>
+          <strong>Ready to Explain</strong>
+          <p>Paste your Python code on the left, then click <strong>Explain Code</strong> to get a line-by-line
+            breakdown.</p>
+        </div>
+        <div id="explanation-list" style="display:none"></div>
+        <div id="improvements-banner" style="display:none">
+          <h3>💡 Improvements</h3>
+          <ul id="improvements-list"></ul>
+        </div>
+      </div>
+
+      <!-- TAB 2: FLOW -->
+      <div class="tab-pane" id="flow-pane">
+        <div class="empty-state" id="flow-empty">
+          <div class="empty-icon">🔀</div>
+          <strong>Flow Diagram</strong>
+          <p>Explain the code first, then click this tab to generate the execution flow.</p>
+        </div>
+        <div id="flow-chart" style="display:none"></div>
+      </div>
+
+      <!-- TAB 3: CHAT -->
+      <div class="tab-pane" id="chat-pane">
+        <div id="chat-intro">
+          <div class="empty-icon">💬</div>
+          <strong>Code Tutor Chat</strong>
+          <p>Ask anything about the code on the left. The AI knows your code and can reference specific lines.</p>
+        </div>
+        <div id="chat-messages" style="display:none"></div>
+        <div id="chat-input-area">
+          <textarea id="chat-input" rows="1" placeholder="Ask about the code… (Enter to send)"></textarea>
+          <button id="chat-send-btn" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /right-panel -->
+  </div><!-- /main -->
+
+
+
+  <script>
+    /* ════════════════════════════════════════════════════
+       CONFIG — Pollinations AI (free, no key needed)
+       ════════════════════════════════════════════════════ */
+    const CONFIG = {
+      baseUrl: 'https://text.pollinations.ai/',
+      model: 'openai',  // GPT-4o-mini via Pollinations free proxy
+    };
+
+    /* ════════ STATE ════════ */
+    let editor;
+    let explanationData = [];   // parsed line explanations
+    let flowCache = null;       // cached flow JSON
+    let flowExplained = false;  // whether explain was run
+    let chatHistory = [];       // conversation array
+    let highlightedLineWidget = null;
+
+    /* ════════ INIT CODEMIRROR ════════ */
+    window.addEventListener('DOMContentLoaded', () => {
+      editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+        mode: 'python',
+        lineNumbers: true,
+        indentWithTabs: false,
+        indentUnit: 4,
+        tabSize: 4,
+        lineWrapping: false,
+        styleActiveLine: true,
+        theme: document.documentElement.dataset.theme === 'dark' ? 'dracula' : 'default',
+      });
+
+      editor.on('gutterClick', (cm, lineNo) => {
+        highlightEditorLine(lineNo);
+      });
+      editor.on('cursorActivity', () => {
+        const lineNo = editor.getCursor().line;
+        syncExplRowToLine(lineNo);
+      });
+
+      // Auto-resize chat input
+      const chatInput = document.getElementById('chat-input');
+      chatInput.addEventListener('input', () => {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+      });
+      chatInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendChat();
+        }
+      });
+
+      document.getElementById('chat-send-btn').addEventListener('click', sendChat);
+      document.getElementById('explain-btn').addEventListener('click', runExplain);
+      document.getElementById('dark-toggle').addEventListener('click', toggleDark);
+
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+    });
+
+    /* ════════ DARK MODE ════════ */
+    function toggleDark() {
+      const html = document.documentElement;
+      const isDark = html.dataset.theme === 'dark';
+      html.dataset.theme = isDark ? 'light' : 'dark';
+      document.getElementById('dark-toggle').textContent = isDark ? '🌙' : '☀️';
+      editor.setOption('theme', isDark ? 'default' : 'dracula');
+    }
+
+    /* ════════ (No API key modal needed — Pollinations AI is free) ════════ */
+
+    /* ════════ TAB SWITCHING ════════ */
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.querySelectorAll('.tab-pane').forEach(p => {
+        p.classList.toggle('active', p.id === tab + '-pane');
+      });
+      if (tab === 'flow' && flowExplained && !flowCache) {
+        runFlow();
+      }
+    }
+
+    /* ════════ EDITOR LINE HIGHLIGHT ════════ */
+    function highlightEditorLine(lineNo) {
+      // Remove previous
+      if (highlightedLineWidget) {
+        editor.removeLineClass(highlightedLineWidget, 'background', 'cm-highlighted-line');
+      }
+      editor.addLineClass(lineNo, 'background', 'cm-highlighted-line');
+      highlightedLineWidget = lineNo;
+      editor.scrollIntoView({ line: lineNo, ch: 0 }, 80);
+    }
+
+    function syncExplRowToLine(lineNo) {
+      // Highlight matching explanation row (1-indexed lines)
+      const lineNum = lineNo + 1;
+      document.querySelectorAll('.expl-row').forEach(row => {
+        row.classList.toggle('highlighted', parseInt(row.dataset.line) === lineNum);
+      });
+    }
+
+    /* ════════ AI CALL — Pollinations.ai (free, no key needed) ════════ */
+    async function callAI({ system, messages, maxTokens }) {
+      const allMessages = [
+        { role: 'system', content: system },
+        ...messages,
+      ];
+
+      const resp = await fetch(CONFIG.baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: allMessages,
+          model: CONFIG.model,
+          seed: Math.floor(Math.random() * 99999),
+          private: true,
+        }),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        throw new Error(`Error (HTTP ${resp.status})${errText ? ': ' + errText.slice(0, 120) : ''}`);
+      }
+
+      const text = await resp.text();
+      if (!text || !text.trim()) throw new Error('Empty response — please try again.');
+      return text.trim();
+    }
+
+    function stripFences(text) {
+      return text.replace(/^```[a-z]*\n?/im, '').replace(/```\s*$/im, '').trim();
+    }
+
+    /**
+     * Robustly extract all complete JSON objects from a string.
+     * Works even if the outer array is truncated (unterminated string / cut-off response).
+     */
+    function extractJSONObjects(text) {
+      const cleaned = stripFences(text);
+
+      // 1. Try a clean full parse first
+      try {
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (_) { }
+
+      // 2. Manually scan character-by-character, collecting every complete {...} object
+      const results = [];
+      let i = 0;
+      while (i < cleaned.length) {
+        if (cleaned[i] !== '{') { i++; continue; }
+        // Walk forward to find the matching closing brace
+        let depth = 0, j = i;
+        let inStr = false, esc = false;
+        while (j < cleaned.length) {
+          const c = cleaned[j];
+          if (esc) { esc = false; j++; continue; }
+          if (c === '\\' && inStr) { esc = true; j++; continue; }
+          if (c === '"') { inStr = !inStr; j++; continue; }
+          if (inStr) { j++; continue; }
+          if (c === '{') { depth++; }
+          else if (c === '}') {
+            depth--;
+            if (depth === 0) {
+              try { results.push(JSON.parse(cleaned.slice(i, j + 1))); } catch (_) { }
+              i = j + 1;
+              break;
+            }
+          }
+          j++;
+        }
+        if (depth > 0) break; // unterminated object — stop scanning
+      }
+      return results;
+    }
+
+    /* ════════ EXPLAIN — TAB 1 ════════ */
+    async function runExplain() {
+      const code = editor.getValue().trim();
+      if (!code) return;
+
+      const btn = document.getElementById('explain-btn');
+      btn.className = 'loading';
+      showSkeleton();
+
+      // Reset flow cache so new code triggers re-fetch
+      flowCache = null;
+      flowExplained = false;
+      document.getElementById('flow-chart').style.display = 'none';
+      document.getElementById('flow-empty').style.display = 'flex';
+      document.getElementById('flow-empty').querySelector('p').textContent =
+        'Explain the code first, then click this tab to generate the execution flow.';
+
+      // Reset chat context
+      chatHistory = [];
+
+      const system = `You are a Python code tutor for AIML students.
+
+Detect the code type silently (ML/web/OOP/async/general Python).
+
+Output EXACTLY one line per code line in this format:
+LINENUM|explanation
+
+Rules:
+- LINENUM = the line number (integer)
+- explanation = one short sentence (max 15 words) saying what the line does
+- For blank lines: write  LINENUM|Blank line
+- For comment lines: write  LINENUM|Comment
+- Cover EVERY line, never skip
+- After all lines, output one more line: IMPROVEMENTS|suggestion1~~suggestion2
+- No JSON, no markdown, no extra text — just the pipe-separated lines`;
+
+      try {
+        const raw = await callAI({
+          system,
+          messages: [{ role: 'user', content: `Explain this Python code line by line:\n\`\`\`python\n${code}\n\`\`\`` }],
+          maxTokens: 6000,
+        });
+
+        // Parse compact pipe format: "LINENUM|explanation" and "IMPROVEMENTS|s1~~s2"
+        const explanations = [];
+        let improvements = [];
+
+        raw.split('\n').forEach(line => {
+          const line2 = line.trim();
+          if (!line2 || !line2.includes('|')) return;
+          const pipeIdx = line2.indexOf('|');
+          const key = line2.slice(0, pipeIdx).trim();
+          const val = line2.slice(pipeIdx + 1).trim();
+
+          if (key.toUpperCase() === 'IMPROVEMENTS') {
+            improvements = val.split('~~').map(s => s.trim()).filter(Boolean);
+          } else {
+            const lineNum = parseInt(key, 10);
+            if (!isNaN(lineNum) && lineNum > 0) {
+              explanations.push({ line: lineNum, explanation: val });
+            }
+          }
+        });
+
+        if (!explanations.length) throw new Error('No explanations returned. Please try again.');
+
+        explanationData = explanations;
+        flowExplained = true;
+        renderExplanation(explanations, improvements);
+
+        btn.className = 'success';
+        setTimeout(() => { btn.className = ''; }, 1500);
+      } catch (e) {
+        hideSkeleton();
+        showExplError(e.message);
+        btn.className = '';
+      }
+    }
+
+
+    function showSkeleton() {
+      const pane = document.getElementById('explanation-pane');
+      // Clear
+      document.getElementById('expl-empty').style.display = 'none';
+      document.getElementById('explanation-list').style.display = 'none';
+      document.getElementById('improvements-banner').style.display = 'none';
+
+      // Remove old skeleton
+      document.querySelectorAll('.skeleton-row').forEach(el => el.remove());
+      document.querySelectorAll('.error-msg').forEach(el => el.remove());
+
+      for (let i = 0; i < 10; i++) {
+        const row = document.createElement('div');
+        row.className = 'skeleton-row';
+        row.innerHTML = `<div class="skeleton-badge"></div><div class="skeleton-text ${i % 3 === 0 ? 'short' : ''}"></div>`;
+        pane.insertBefore(row, document.getElementById('improvements-banner'));
+      }
+    }
+
+    function hideSkeleton() {
+      document.querySelectorAll('.skeleton-row').forEach(el => el.remove());
+    }
+
+    function renderExplanation(lines, improvements) {
+      hideSkeleton();
+      const list = document.getElementById('explanation-list');
+      list.innerHTML = '';
+
+      if (!lines.length) {
+        document.getElementById('expl-empty').style.display = 'flex';
+        return;
+      }
+
+      lines.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'expl-row';
+        row.dataset.line = item.line;
+        row.innerHTML = `<span class="line-badge">${item.line}</span><span class="expl-text">${escapeHtml(item.explanation)}</span>`;
+        row.addEventListener('click', () => {
+          highlightEditorLine(item.line - 1);
+          document.querySelectorAll('.expl-row').forEach(r => r.classList.remove('highlighted'));
+          row.classList.add('highlighted');
+        });
+        list.appendChild(row);
+      });
+      list.style.display = 'flex';
+      list.style.flexDirection = 'column';
+
+      // Improvements
+      if (improvements && improvements.length) {
+        const ul = document.getElementById('improvements-list');
+        ul.innerHTML = improvements.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+        document.getElementById('improvements-banner').style.display = 'block';
+      }
+    }
+
+    function showExplError(msg) {
+      const pane = document.getElementById('explanation-pane');
+      const div = document.createElement('div');
+      div.className = 'error-msg';
+      div.innerHTML = `<span>⚠️</span><span>Something went wrong — ${escapeHtml(msg)}. Please try again.</span>`;
+      pane.insertBefore(div, document.getElementById('improvements-banner'));
+      document.getElementById('expl-empty').style.display = 'none';
+      document.getElementById('explanation-list').style.display = 'none';
+    }
+
+    /* ════════ FLOW — TAB 2 ════════ */
+    async function runFlow() {
+      if (flowCache) { renderFlow(flowCache); return; }
+
+      const code = editor.getValue().trim();
+      const flowEmpty = document.getElementById('flow-empty');
+      const flowChart = document.getElementById('flow-chart');
+
+      // Show spinner
+      flowEmpty.style.display = 'none';
+      flowChart.style.display = 'flex';
+      flowChart.innerHTML = '<div class="empty-state"><div class="empty-icon" style="animation:spin 1s linear infinite;display:inline-block">⏳</div><p>Generating flow diagram…</p></div>';
+
+      const system = `You are a Python code analyst. Given any Python code — ML pipelines, algorithms, OOP classes, scripts, async functions — return a JSON array of flow steps showing how the code executes.
+
+Each step must have:
+- "type": one of: "start", "process", "decision", "loop", "output"
+- "label": short description, max 8 words, written in plain English
+
+Rules:
+- "start" = function definition or script entry point
+- "process" = assignment, computation, function call, import
+- "decision" = if/elif/else, try/except
+- "loop" = for/while loops
+- "output" = return statement, print, yield
+
+Order steps exactly as they execute. For loops, show one "loop" node (don't unroll it). Output ONLY a valid JSON array, no markdown.`;
+
+      try {
+        const raw = await callAI({
+          system,
+          messages: [{ role: 'user', content: `Python code:\n\`\`\`python\n${code}\n\`\`\`` }],
+          maxTokens: 1500,
+        });
+        const steps = extractJSONObjects(raw).filter(o => o.type && o.label);
+        if (!steps.length) throw new Error('No flow steps returned. Please try again.');
+        flowCache = steps;
+        renderFlow(steps);
+      } catch (e) {
+        flowChart.innerHTML = `<div class="error-msg"><span>⚠️</span><span>Something went wrong — ${escapeHtml(e.message)}. Please try again.</span></div>`;
+      }
+    }
+
+    function renderFlow(steps) {
+      const chart = document.getElementById('flow-chart');
+      chart.innerHTML = '';
+      chart.style.display = 'flex';
+
+      steps.forEach((step, i) => {
+        const node = document.createElement('div');
+        node.className = `flow-node ${step.type}`;
+        node.textContent = step.label;
+        chart.appendChild(node);
+        if (i < steps.length - 1) {
+          const arrow = document.createElement('div');
+          arrow.className = 'flow-arrow';
+          chart.appendChild(arrow);
+        }
+      });
+    }
+
+    /* ════════ CHAT — TAB 3 ════════ */
+    async function sendChat() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const code = editor.getValue().trim();
+
+      // Show messages area
+      document.getElementById('chat-intro').style.display = 'none';
+      const msgs = document.getElementById('chat-messages');
+      msgs.style.display = 'flex';
+
+      // Append user message
+      chatHistory.push({ role: 'user', content: text });
+      appendMsg('user', text);
+      input.value = '';
+      input.style.height = 'auto';
+
+      // Typing indicator
+      const indicator = document.createElement('div');
+      indicator.className = 'typing-dots';
+      indicator.innerHTML = '<span></span><span></span><span></span>';
+      msgs.appendChild(indicator);
+      msgs.scrollTop = msgs.scrollHeight;
+
+      const system = `You are a Python and AIML tutor. The user has pasted this code:
+\`\`\`python
+${code}
+\`\`\`
+
+Rules for your answers:
+- Keep answers short and clear — max 4 sentences unless the question needs more
+- Always reference specific line numbers when explaining something (e.g. "Line 3 does X because...")
+- If the code is ML-related, explain ML concepts in simple terms (what is gradient descent, what is a tensor, etc.)
+- If the code is OOP, explain design patterns and why they're used
+- If the code is a general algorithm, explain time/space complexity if relevant
+- Format inline code with backticks
+- Never say "great question" or use filler phrases — get straight to the answer`;
+
+      try {
+        const reply = await callAI({
+          system,
+          messages: chatHistory,
+          maxTokens: 1000,
+        });
+
+        indicator.remove();
+        chatHistory.push({ role: 'assistant', content: reply });
+        appendMsg('assistant', reply);
+      } catch (e) {
+        indicator.remove();
+        appendMsg('assistant', `⚠️ Something went wrong — ${e.message}. Please try again.`);
+      }
+    }
+
+    function appendMsg(role, text) {
+      const msgs = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      // Simple markdown-ish: inline code
+      div.innerHTML = formatChatText(text);
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function formatChatText(text) {
+      return escapeHtml(text)
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+    }
+
+    /* ════════ UTILS ════════ */
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+
+</html>
