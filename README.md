@@ -15,4 +15,7 @@ One of the most significant advantages of PyExplain is its simplicity and access
 Looking ahead, PyExplain has the potential to evolve even further with additional features such as multi-language support for languages like Java, C++, and JavaScript, the ability to export explanations as PDFs, options to save and share code snippets, integration of time and space complexity analysis, and even voice-based explanations for enhanced accessibility. Overall, PyExplain represents a significant step forward in educational technology, providing a comprehensive and interactive platform for learning Python in a deeper and more meaningful way. By combining AI-driven analysis with an intuitive interface and powerful features, it empowers students to move beyond memorization and truly understand the logic, workflows, and concepts that underpin modern programming.
 <img width="1889" height="939" alt="image" src="https://github.com/user-attachments/assets/88f8c48e-673e-477a-8d26-f9ce3d2d1be2" />
 <img width="1890" height="908" alt="image" src="https://github.com/user-attachments/assets/283edb2f-84c7-4db6-8093-336005a9524b" />
+<img width="1887" height="841" alt="image" src="https://github.com/user-attachments/assets/047402c1-fa98-4356-91e0-2eebde6f33fa" />
+
+
 
