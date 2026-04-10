@@ -1,0 +1,19 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Env / secrets (add a config file if you externalize the API key)
+.env
+*.env.local
+config.local.js
+
+# Node (if you ever add a dev server)
+node_modules/
+npm-debug.log*
